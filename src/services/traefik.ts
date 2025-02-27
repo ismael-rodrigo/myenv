@@ -26,17 +26,20 @@ export const updateComposeFile = async (input: {
     
     for (const containerName in compose.services) {
 
-        const service = `${input.key}_${containerName}`
-        const containerPort = compose.services[containerName].labels.find((label: string) => label.startsWith("port"))?.split("=")[1] || 80
+        const service = `${containerName}-${input.key}`
+        compose.services[service] = compose.services[containerName]
+        delete compose.services[containerName]
 
-        compose.services[containerName].container_name = service
-        compose.services[containerName].networks = ["traefik_proxy"]
+        const containerPort = compose.services[service].labels.find((label: string) => label.startsWith("port"))?.split("=")[1] || 80
+
+        compose.services[service].networks = ["traefik_proxy"]
+
         compose.networks = {
             traefik_proxy: {
                 external: true
             }
         }
-
+        
         traefik.http.routers[service+"-router"] = {
             rule: `Host(\`${service}.localhost\`)`,
             service: service+"-service",
@@ -46,14 +49,14 @@ export const updateComposeFile = async (input: {
 
         traefik.http.services[service+"-service"] = {
             loadBalancer: {
-                servers: [ { url: `http://${service}:${containerPort}` } ],
+                servers: [ { url: `http://${input.project}_${service}_1:${containerPort}` } ],
                 passHostHeader: true
             }
         }
     }
 
     const newYaml = yaml.dump(compose, { noRefs: true });
-    
+
     const traefikYaml = yaml.dump(traefik, { noRefs: true });
 
     await Bun.file(composePath).write(newYaml)
