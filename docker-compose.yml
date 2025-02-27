@@ -1,0 +1,37 @@
+version: "3.9"
+
+services:
+  traefik:
+    image: traefik:v3.3
+    container_name: traefik
+    ports:
+      - "80:80"
+      - "8080:8080" # Dashboard do Traefik
+    command: 
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--providers.file.directory=/etc/traefik/dynamic"
+      - "--providers.file.watch=true"
+      - "--entrypoints.web.address=:80"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+      - "./traefik/dynamic:/etc/traefik/dynamic"
+    networks:
+      - traefik_proxy
+
+  server:
+    container_name: server-app-v0
+    image: server:v0
+    env_file:
+      - .env
+    build: .
+    volumes:
+      - "./traefik/dynamic:/etc/traefik/dynamic"
+      - "/var/run/docker.sock:/var/run/docker.sock"
+    networks:
+      - traefik_proxy
+
+networks:
+  traefik_proxy:
+    external: true
