@@ -80,9 +80,6 @@ export const runProjectCompose = async (input: {
     }
 
     const result = await execAsync(`docker-compose -f ${path}/${composeFile} up -d`)
-
-    console.log(result)
-    
     if(result.stderr){
         return { error: result.stderr }
     }

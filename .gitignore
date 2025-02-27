@@ -9,12 +9,10 @@ yarn-debug.log*
 yarn-error.log*
 lerna-debug.log*
 .pnpm-debug.log*
-traefik
-temp
-# Caches
-tmp
-.cache
 
+# Caches
+
+.cache
 
 # Diagnostic reports (https://nodejs.org/api/report.html)
 
@@ -175,5 +173,3 @@ dist
 
 # Finder (MacOS) folder config
 .DS_Store
-
-.env

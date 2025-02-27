@@ -34,7 +34,7 @@ fastify.post('/hook', async function handler(request, reply) {
 
     const runResult = await runProjectCompose({ project })
 
-    return { data: runResult.data }
+    return { data: runResult.data, error: runResult.error }
 })
 
 try {

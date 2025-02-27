@@ -44,6 +44,9 @@ export const checkoutBranch = async ({ branch, project }: { branch: string, proj
         if(stderr.message.includes('Already on')){
             return { data: true, error: null }
         }
+        if([`Switched to a new branch '${branch}'\n`, `Switched to branch '${branch}'\n`].includes(stderr.message)){
+            return { data: true, error: null }
+        }
     }
     return { data: stdout, error: stderr }
 }
