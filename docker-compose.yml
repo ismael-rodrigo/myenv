@@ -15,7 +15,7 @@ services:
       - "--providers.file.watch=true"
       - "--entrypoints.web.address=:80"
     volumes:
-      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+      - "/var/run/docker.sock:/var/run/docker.sock"
       - "./traefik/dynamic:/etc/traefik/dynamic"
     networks:
       - traefik_proxy
@@ -26,9 +26,13 @@ services:
     env_file:
       - .env
     build: .
+    ports:
+      - "7070:7070"
     volumes:
       - "./traefik/dynamic:/etc/traefik/dynamic"
       - "/var/run/docker.sock:/var/run/docker.sock"
+      - "./temp:/tmp/myenv"
+    user: "1000:1000"
     networks:
       - traefik_proxy
 

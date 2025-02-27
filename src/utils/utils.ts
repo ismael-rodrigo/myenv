@@ -17,7 +17,10 @@ export type Result<T> = {
 }
 
 export const getProjectPath = (repository: string)  => {
-    //check os 
+    const isProduction = process.env.NODE_ENV === 'production'
+    if(isProduction){
+        return `/tmp/myenv/${repository}`
+    }
     if(process.platform === 'win32'){
         return `.\\tmp\\${repository}`
     }

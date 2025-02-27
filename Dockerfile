@@ -4,6 +4,7 @@ WORKDIR /usr/src/app
 FROM base AS install
 RUN mkdir -p /temp/dev
 COPY package.json bun.lock /temp/dev/
+
 RUN cd /temp/dev && bun install --frozen-lockfile
 
 RUN mkdir -p /temp/prod
@@ -24,14 +25,14 @@ RUN usermod -aG docker bunjs
 COPY --from=install /temp/prod/node_modules node_modules
 COPY --from=prerelease /usr/src/app/src ./src
 COPY --from=prerelease /usr/src/app/package.json .
-COPY --from=prerelease /usr/src/app/traefik /etc/traefik
-COPY --from=prerelease /usr/src/app/traefik/server-app.yml /etc/traefik/dynamic/server-app.yml
+
+RUN mkdir -p /etc/traefik/dynamic
+
+RUN mkdir -p /tmp/myenv
 RUN chown -R bunjs:nodejs /usr/src/app
-RUN mkdir -p /usr/src/app/tmp
-RUN chmod -R 777 /usr/src/app/tmp
+RUN chown -R bunjs:nodejs /tmp/myenv
+RUN chmod -R 777 /tmp/myenv
 
-
-RUN chmod 777 /var/run
 USER root
 RUN chmod 777 /var/run
 USER bunjs
