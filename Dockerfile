@@ -50,4 +50,4 @@ ENV DATABASE_URL="file:/var/lib/myenv/myenv.db"
 
 USER bunjs
 
-ENTRYPOINT [ "bun", "run", "src/index.ts" ]
+ENTRYPOINT [ "./entrypoint.sh" ]

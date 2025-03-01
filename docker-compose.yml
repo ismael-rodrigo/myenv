@@ -30,7 +30,7 @@ services:
       - "7070:7070"
     volumes:
       - "./server/traefik/dynamic:/etc/traefik/dynamic"
-      - "temp:/tmp/myenv"
+      # - "./server/tmp:/tmp/myenv"
       - "./server/data:/var/lib/myenv"
       - "/var/run/docker.sock:/var/run/docker.sock"
     networks:
@@ -40,7 +40,3 @@ services:
 networks:
   traefik_proxy:
     external: true
-
-volumes:
-  temp:
-  

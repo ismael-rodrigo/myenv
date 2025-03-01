@@ -6,5 +6,4 @@ if [ ! -f /var/lib/myenv/myenv.db ]; then
     bunx prisma migrate deploy 
 fi
 echo "Starting server"
-
-exec "$@"
+bun run src
