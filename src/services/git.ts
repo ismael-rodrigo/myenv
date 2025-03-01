@@ -1,52 +1,41 @@
 
-import { execAsync, getProjectPath, type Result } from '../utils/utils';
+import { execAsync, getPaths, type Result } from '../utils/utils';
 
-type CloneRepoInput = {
-    repositoryUrl: string;
-}
 export const getProject = (repository: string) => {
     return repository.split('/').pop()?.replace('.git', '') || ''
 }
-export const cloneRepo = async (input: CloneRepoInput): Promise<Result<boolean>> => {
-    const githubToken = process.env.GITHUB_TOKEN
-
-    let repositoryUrl = !!githubToken 
+export const cloneRepository = async (input: {
+    projectId: string;
+    repositoryUrl: string;
+    githubToken?: string;
+}) => {
+    const { githubToken } = input
+    const repositoryUrl = !!githubToken
         ? `https://${githubToken}@${input.repositoryUrl.replace('https://', '')}` 
         : input.repositoryUrl
 
-    
-    const projectPath = getProjectPath(getProject(input.repositoryUrl))
+    const { PROJECT_PATH } = getPaths(input.projectId)
+    console.log(PROJECT_PATH)
+    const r = await execAsync(`git config --global --add safe.directory ${PROJECT_PATH}`)
+    console.log(r)
+    const result = await execAsync(`git clone ${repositoryUrl} ${PROJECT_PATH}`)
 
-    await execAsync(`git config --global --add safe.directory ${projectPath}`)
+    console.log(result)
 
-    const result = await execAsync(`git clone ${repositoryUrl} ${projectPath}`)
-
-    if(result.stderr){
-        if(result.stderr.message.includes('is not an empty directory')){
-            return { data: true, error: null }
-        }
-        if(result.stderr.message == `Cloning into '${projectPath}'...\n`){
-            return { data: true, error: null }
-        }
-        return { data: false, error: result.stderr }
-    }
-
-    return { data: true, error: null }
+    return result
 }
 
-export const checkoutBranch = async ({ branch, project }: { branch: string, project: string }) => {
-    const pathname = getProjectPath(project)
-    const execCommand = `cd ${pathname} && git checkout ${branch} -f && git pull`
+export const checkoutBranch = async ({ branch, projectId }: { branch: string, projectId: string }) => {
+    const { PROJECT_PATH } = getPaths(projectId)
+    const gitDir = `${PROJECT_PATH}/.git`
+    const execCommand = `
+        git --git-dir=${gitDir} --work-tree=${gitDir} checkout ${branch} -f && 
+        git --git-dir=${gitDir} --work-tree=${gitDir} pull origin ${branch}
+    `
 
-    const { stderr, stdout } = await execAsync(execCommand)
+    const result = await execAsync(execCommand)
 
-    if(stderr){
-        if(stderr.message.includes('Already on')){
-            return { data: true, error: null }
-        }
-        if([`Switched to a new branch '${branch}'\n`, `Switched to branch '${branch}'\n`].includes(stderr.message)){
-            return { data: true, error: null }
-        }
-    }
-    return { data: stdout, error: stderr }
+    // Add logs
+
+    return result
 }

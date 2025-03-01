@@ -16,7 +16,7 @@ services:
       - "--entrypoints.web.address=:80"
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock"
-      - "./traefik/dynamic:/etc/traefik/dynamic"
+      - "./server/traefik/dynamic:/etc/traefik/dynamic"
     networks:
       - traefik_proxy
 
@@ -29,13 +29,18 @@ services:
     ports:
       - "7070:7070"
     volumes:
-      - "./traefik/dynamic:/etc/traefik/dynamic"
+      - "./server/traefik/dynamic:/etc/traefik/dynamic"
+      - "temp:/tmp/myenv"
+      - "./server/data:/var/lib/myenv"
       - "/var/run/docker.sock:/var/run/docker.sock"
-      - "./temp:/tmp/myenv"
-    user: "1000:1000"
     networks:
       - traefik_proxy
+    user: "bunjs"
 
 networks:
   traefik_proxy:
     external: true
+
+volumes:
+  temp:
+  

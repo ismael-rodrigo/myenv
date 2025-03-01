@@ -1,0 +1,15 @@
+http:
+  routers:
+    main-main-main-main-main-main-main-app-router:
+      rule: Host(`main-main-main-main-main-main-main-app.localhost`)
+      service: main-main-main-main-main-main-main-app-service
+      entrypoints:
+        - web
+      middlewares: []
+  services:
+    main-main-main-main-main-main-main-app-service:
+      loadBalancer:
+        servers:
+          - url: >-
+              http://cm7qj1ax30000rj01zhmszoro-main-main-main-main-main-main-main-app-1:8080
+        passHostHeader: true
