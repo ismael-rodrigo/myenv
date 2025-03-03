@@ -5,11 +5,11 @@ import { checkoutBranch, cloneRepository } from "../services/git";
 import { deployFromDockerCompose, onContainerLogs } from "../services/docker";
 
 export const registerProjectControllers = (fastify: FastifyInstance) => {
-    fastify.get('/projects/list', async () => {
+    fastify.get('/api/projects/list', async () => {
         return prisma.project.findMany()
     })
 
-    fastify.post('/projects/create', async (request) => {
+    fastify.post('/api/projects/create', async (request) => {
         const { name } = request.body as { name: string }
         return prisma.project.create({
             data: {
@@ -18,21 +18,21 @@ export const registerProjectControllers = (fastify: FastifyInstance) => {
         })
     })
 
-    fastify.get('/projects/:id', async (request) => {
+    fastify.get('/api/projects/:id', async (request) => {
         const { id } = request.params as { id: string }
         return prisma.project.findUnique({
             where: { id }
         })
     })
 
-    fastify.delete('/projects/:id', async (request) => {
+    fastify.delete('/api/projects/:id', async (request) => {
         const { id } = request.params as { id: string }
         return prisma.project.delete({
             where: { id }
         })
     })
 
-    fastify.post('/projects/:id/add-repository', async (request) => {
+    fastify.post('/api/projects/:id/add-repository', async (request) => {
         const { id } = request.params as { id: string }
         const { repositoryToken, repositoryUrl } = request.body as { repositoryUrl: string, repositoryToken?: string }
         const project = await prisma.project.update({
@@ -48,7 +48,7 @@ export const registerProjectControllers = (fastify: FastifyInstance) => {
         await cloneRepository({ projectId: project.id, repositoryUrl: project.repositoryUrl, githubToken: repositoryToken })
     })
 
-    fastify.get('/projects/:id/list-repository-branches', async (request) => {
+    fastify.get('/api/projects/:id/list-repository-branches', async (request) => {
         const { id } = request.params as { id: string }
         const project = await prisma.project.findUnique({
             where: { id }
@@ -59,7 +59,7 @@ export const registerProjectControllers = (fastify: FastifyInstance) => {
         return getBranches({ repositoryUrl: project.repositoryUrl, repositoryToken: project.repositoryToken || undefined })
     })
 
-    fastify.post('/projects/:id/deploy-branch', async (request) => {
+    fastify.post('/api/projects/:id/deploy-branch', async (request) => {
         const { id } = request.params as { id: string }
         const { branch, type } = request.body as { branch: string, type: 'docker-compose' }
         const project = await prisma.project.findUnique({
@@ -78,7 +78,7 @@ export const registerProjectControllers = (fastify: FastifyInstance) => {
         return { success: true }
     })
     
-    fastify.get('/container-logs/:containerId', async (request, reply) => {
+    fastify.get('/api/container-logs/:containerId', async (request, reply) => {
         const { containerId } = request.params as { containerId: string }
         reply.raw.setHeader('Content-Type', 'text/event-stream')
         reply.raw.setHeader('Cache-Control', 'no-cache')
