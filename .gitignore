@@ -19,7 +19,9 @@ lerna-debug.log*
 report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 
 # Runtime data
-
+server/*
+server/data/*
+server/data/myenv.db
 pids
 _.pid
 _.seed
