@@ -30,12 +30,11 @@ services:
       - "7070:7070"
     volumes:
       - "./server/traefik/dynamic:/etc/traefik/dynamic"
-      # - "./server/tmp:/tmp/myenv"
+      - "./server/tmp:/tmp/myenv"
       - "./server/data:/var/lib/myenv"
       - "/var/run/docker.sock:/var/run/docker.sock"
     networks:
       - traefik_proxy
-    user: "bunjs"
 
 networks:
   traefik_proxy:

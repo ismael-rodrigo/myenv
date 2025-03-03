@@ -68,7 +68,7 @@ export const deployFromDockerCompose = async (input: {
     await Bun.file(composePath).write(newCompose)
     await Bun.file(join(TRAEFIK_DYNAMIC_PATH,`${input.projectId}-${input.environmentKey}.yml`)).write(traefikYaml)
 
-    Bun.spawn(['docker', 'compose', '-p', input.projectId, 'up', '-d' ], {
+    Bun.spawn(['docker', 'compose', '-p', input.projectId, 'up', '-d', '--force-recreate', '--build' ], {
         cwd: PROJECT_PATH
     })
 }

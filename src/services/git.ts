@@ -28,9 +28,11 @@ export const cloneRepository = async (input: {
 export const checkoutBranch = async ({ branch, projectId }: { branch: string, projectId: string }) => {
     const { PROJECT_PATH } = getPaths(projectId)
     const gitDir = `${PROJECT_PATH}/.git`
+    const envGit = `--git-dir=${gitDir} --work-tree=${PROJECT_PATH}`
     const execCommand = `
-        git --git-dir=${gitDir} --work-tree=${gitDir} checkout ${branch} -f && 
-        git --git-dir=${gitDir} --work-tree=${gitDir} pull origin ${branch}
+        git ${envGit} checkout ${branch} &&
+        git ${envGit} fetch origin ${branch} &&
+        git ${envGit} reset --hard origin/${branch}
     `
 
     const result = await execAsync(execCommand)
