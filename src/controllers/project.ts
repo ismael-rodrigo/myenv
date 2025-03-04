@@ -2,11 +2,13 @@ import type { FastifyInstance } from "fastify";
 import { prisma } from "../lib/prisma";
 import { getBranches } from "../services/github";
 import { checkoutBranch, cloneRepository } from "../services/git";
-import { deployFromDockerCompose, onContainerLogs } from "../services/docker";
+import { deployFromDockerCompose, getContainersRunning, onContainerLogs } from "../services/docker";
 
 export const registerProjectControllers = (fastify: FastifyInstance) => {
     fastify.get('/api/projects/list', async () => {
-        return prisma.project.findMany()
+        return prisma.project.findMany({
+            select: { id: true, name: true }
+        })
     })
 
     fastify.post('/api/projects/create', async (request) => {
@@ -20,9 +22,42 @@ export const registerProjectControllers = (fastify: FastifyInstance) => {
 
     fastify.get('/api/projects/:id', async (request) => {
         const { id } = request.params as { id: string }
-        return prisma.project.findUnique({
+        const project = await prisma.project.findUnique({
             where: { id }
         })
+        if(!project || !project.repositoryUrl){
+            return { error: 'Project not found' }
+        }
+        // const containers = await getContainersRunning(project.id)
+        // return { project, containers }
+
+        return {
+            "project": {
+                "id": "cm7tfnbvq0000k801w7u431v2",
+                "name": "teste",
+                "repositoryUrl": "https://github.com/ismael-rodrigo/simple.git",
+                "repositoryToken": "teste"
+            },
+            "containers": {
+                staging: [
+                  {
+                    id: "690bb696e627",
+                    name: "app",
+                    status: "Up 2 hours (healthy)",
+                    state: "running",
+                  }
+                ],
+                environments: [ "staging", "main" ],
+                main: [
+                  {
+                    id: "e5c82dada3d2",
+                    name: "app",
+                    status: "Exited (255) 7 hours ago",
+                    state: "exited",
+                  }
+                ],
+              }
+        }
     })
 
     fastify.delete('/api/projects/:id', async (request) => {

@@ -73,17 +73,24 @@ export const deployFromDockerCompose = async (input: {
     })
 }
 
+type ContainerLs = {
+    ID: string;
+    Names: string;
+    State: string;
+    Status: string;
+}
 export const getContainersRunning = async (projectId: string) => {
-    const result = await execAsync(`docker ps --filter "name=${projectId}" --format "{{.ID}} {{.Names}}"`)
-    const containers = result.stdout.split('\n').filter(Boolean).reduce((acc: any, container: string) => {
-        const [id, name] = container.split(' ')
-        const [_, environmentKey, ...containerName] = name.split('-').slice(1)
+    const result = await execAsync(`docker ps --filter "name=${projectId}" --format "{{json .}}" --all`)
+    const containersFiltered = result.stdout.split('\n').filter(Boolean).map((container: string) => JSON.parse(container)) as ContainerLs[]
+    const containers = containersFiltered.reduce((acc: any, container) => {
+        const { ID: id, Names: name, State: state, Status: status } = container
+        const [_, environmentKey, ...containerName] = name.split('-').slice(0, -1)
         if(!acc[environmentKey]){
             acc[environmentKey] = []
             acc.environments = acc.environments || []
             acc.environments.push(environmentKey)
         }
-        acc[environmentKey].push({ id, name: containerName.join('-') })
+        acc[environmentKey].push({ id, name: containerName.join('-'), status, state })
         return acc
     }, {})
     return containers

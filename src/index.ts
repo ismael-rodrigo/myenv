@@ -6,7 +6,8 @@ import { resolve } from 'node:path'
 const fastify = Fastify({
   logger: true
 })
-console.log(resolve(import.meta.dirname, '../'))
+
+
 await fastify.register(FastifyVite, {
   root: resolve(import.meta.dirname, '../'),
   dev: process.argv.includes('--dev'),
@@ -14,7 +15,9 @@ await fastify.register(FastifyVite, {
 })
 
 fastify.get('/', (req, reply) => {
-  
+  return reply.html()
+})
+fastify.setNotFoundHandler((req, reply) => {
   return reply.html()
 })
 

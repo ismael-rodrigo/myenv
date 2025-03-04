@@ -25,6 +25,8 @@ services:
     image: server:v0
     env_file:
       - .env
+    environment:
+      - DATABASE_URL="file:/var/lib/myenv/myenv.db"
     build: .
     ports:
       - "7070:7070"

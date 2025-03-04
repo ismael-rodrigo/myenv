@@ -1,0 +1,14 @@
+http:
+  routers:
+    staging-app-router:
+      rule: Host(`staging-app.localhost`)
+      service: staging-app-service
+      entrypoints:
+        - web
+      middlewares: []
+  services:
+    staging-app-service:
+      loadBalancer:
+        servers:
+          - url: http://cm7tfnbvq0000k801w7u431v2-staging-app-1:8080
+        passHostHeader: true
