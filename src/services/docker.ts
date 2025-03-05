@@ -1,8 +1,7 @@
-import { spawn } from "bun";
 import { execAsync, getPaths, readStream } from "../utils/utils";
 import * as yaml from 'js-yaml'
 import { join } from 'path';
-import { watch } from "fs";
+import { getEnvironmentContent } from "./project";
 
 const DOCKER_COMPOSE_FILES = ['docker-compose.yml', 'docker-compose.yaml']
 
@@ -10,7 +9,7 @@ export const deployFromDockerCompose = async (input: {
     projectId: string;
     environmentKey: string;
 }) => {
-    const { PROJECT_PATH, TRAEFIK_DYNAMIC_PATH } = getPaths(input.projectId)
+    const { PROJECT_PATH, TRAEFIK_DYNAMIC_PATH, PROJECT_ENV } = getPaths(input.projectId)
     const composeFile = DOCKER_COMPOSE_FILES.find(file => Bun.file(`${PROJECT_PATH}/${file}`).exists())
     if(!composeFile){
         return { error: new Error('docker-compose file not found') }
@@ -34,10 +33,10 @@ export const deployFromDockerCompose = async (input: {
         compose.services[service] = compose.services[containerName]
         delete compose.services[containerName]
 
-        const containerPort = compose.services[service].labels.find((label: string) => label.startsWith("port"))?.split("=")[1]
+        const containerPort = compose.services[service].labels.find((label: string) => label.startsWith("port="))?.split("=")[1]
 
         if(!containerPort) continue
-        
+        compose.services[service].env_file = [ PROJECT_ENV, ...(compose.services[service].env_file || []) ]
         compose.services[service].networks = ["traefik_proxy"]
 
         compose.networks = {
@@ -96,21 +95,32 @@ export const getContainersRunning = async (projectId: string) => {
     return containers
 }
 
-export const restartContainer = async (containerId: string) => {
-    const result = await execAsync(`docker restart ${containerId}`)
+export const restartContainers = async (containerIds: string[]) => {
+    const result = await execAsync(`docker restart ${containerIds.join(' ')}`)
     return result
 }
 
-export const onContainerLogs = (containerId: string, cb: (logs: {msg: string}[]) => void) => {
-    const comannd = `docker logs -f ${containerId}` 
-    const process = Bun.spawn(comannd.split(' '))
+export const stopContainers = async (containerIds: string[]) => {
+    const result = await execAsync(`docker stop ${containerIds.join(' ')}`)
+    return result
+}
+
+export const upContainers = async (containerIds: string[]) => {
+    const result = await execAsync(`docker start ${containerIds.join(' ')}`)
+    return result
+}
+
+export const onContainerLogs = async (containerId: string, cb: (logs: object) => void) => {
+    const comannd = `docker logs -f ${containerId} -n 50` 
+    const process = Bun.spawn(comannd.split(' '), {
+        
+    })
     const stream = () => readStream(process.stdout, (data)=> {
         const logs = data.split('\n').filter(Boolean).map((log: string) => {
             if(log.startsWith('{') && log.endsWith('}')) return JSON.parse(log)
             return { msg: log, level: 10 }
         })
-        cb(logs)
+        cb({logs})
     })
-
     return {process, stream}
 }

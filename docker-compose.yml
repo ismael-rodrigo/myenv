@@ -14,9 +14,13 @@ services:
       - "--providers.file.directory=/etc/traefik/dynamic"
       - "--providers.file.watch=true"
       - "--entrypoints.web.address=:80"
+      - "--accesslog=true"
+      - "--log.level=DEBUG"
+      - "--log.filePath=/var/log/traefik.log"
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock"
       - "./server/traefik/dynamic:/etc/traefik/dynamic"
+      - "./server/tmp/log:/var/log"
     networks:
       - traefik_proxy
 
@@ -24,9 +28,7 @@ services:
     container_name: server-app-v0
     image: server:v0
     env_file:
-      - .env
-    environment:
-      - DATABASE_URL="file:/var/lib/myenv/myenv.db"
+      - prod.env
     build: .
     ports:
       - "7070:7070"

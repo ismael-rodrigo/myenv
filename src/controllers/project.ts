@@ -2,7 +2,8 @@ import type { FastifyInstance } from "fastify";
 import { prisma } from "../lib/prisma";
 import { getBranches } from "../services/github";
 import { checkoutBranch, cloneRepository } from "../services/git";
-import { deployFromDockerCompose, getContainersRunning, onContainerLogs } from "../services/docker";
+import { deployFromDockerCompose, getContainersRunning, onContainerLogs, restartContainers, stopContainers, upContainers } from "../services/docker";
+import { getEnvironmentContent, saveEnvironmentFile } from "../services/project";
 
 export const registerProjectControllers = (fastify: FastifyInstance) => {
     fastify.get('/api/projects/list', async () => {
@@ -25,39 +26,11 @@ export const registerProjectControllers = (fastify: FastifyInstance) => {
         const project = await prisma.project.findUnique({
             where: { id }
         })
-        if(!project || !project.repositoryUrl){
+        if(!project){
             return { error: 'Project not found' }
         }
-        // const containers = await getContainersRunning(project.id)
-        // return { project, containers }
-
-        return {
-            "project": {
-                "id": "cm7tfnbvq0000k801w7u431v2",
-                "name": "teste",
-                "repositoryUrl": "https://github.com/ismael-rodrigo/simple.git",
-                "repositoryToken": "teste"
-            },
-            "containers": {
-                staging: [
-                  {
-                    id: "690bb696e627",
-                    name: "app",
-                    status: "Up 2 hours (healthy)",
-                    state: "running",
-                  }
-                ],
-                environments: [ "staging", "main" ],
-                main: [
-                  {
-                    id: "e5c82dada3d2",
-                    name: "app",
-                    status: "Exited (255) 7 hours ago",
-                    state: "exited",
-                  }
-                ],
-              }
-        }
+        const containers = await getContainersRunning(project.id)
+        return { project, containers }
     })
 
     fastify.delete('/api/projects/:id', async (request) => {
@@ -118,16 +91,46 @@ export const registerProjectControllers = (fastify: FastifyInstance) => {
         reply.raw.setHeader('Content-Type', 'text/event-stream')
         reply.raw.setHeader('Cache-Control', 'no-cache')
         reply.raw.setHeader('Connection', 'keep-alive')
-        reply.raw.write(`data: connected sssssss\n\n`)
-        const logger = onContainerLogs(containerId, (data) => {
+
+        reply.raw.write(`data: Connected to container ${containerId} logs\n\n`)
+
+        const logger = await onContainerLogs(containerId, (data) => {
             reply.raw.write(`data: ${JSON.stringify(data)}\n\n`)
         })
+
         request.raw.on('close', () => {
-            reply.raw.end()
             logger.process.kill()
+            reply.raw.end()
             console.log('closed connection ' + containerId)
         })
         await logger.stream()
     })
     
+    fastify.post('/api/restart-containers', async (request) => {
+        const { containerIds } = request.body as { containerIds: string[] }
+        return restartContainers(containerIds)
+    })
+
+    fastify.post('/api/stop-containers', async (request) => {
+        const { containerIds } = request.body as { containerIds: string[] }
+        return stopContainers(containerIds)
+    })
+
+    fastify.post('/api/up-containers', async (request) => {
+        const { containerIds } = request.body as { containerIds: string[] }
+        return upContainers(containerIds)
+    })
+
+    fastify.post('/api/projects/:id/envfile', async (request) => {
+        const { id } = request.params as { id: string }
+        const { payload } = request.body as { payload: string }
+        await saveEnvironmentFile({ projectId: id, payload })
+        return { success: true }
+    })
+
+    fastify.get('/api/projects/:id/envfile', async (request) => {
+        const { id } = request.params as { id: string }
+        const payload = await getEnvironmentContent(id)
+        return { payload }
+    })
 }

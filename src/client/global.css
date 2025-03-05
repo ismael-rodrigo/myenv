@@ -38,8 +38,14 @@ color-scheme: "dark";
 --depth: 1;
 --noise: 0;
 }
-  
 
+
+.btn {
+    @apply h-8
+}
+html {
+    scrollbar-gutter: auto !important;
+  }
 body {
     background-color: black;
     height: 100vh;

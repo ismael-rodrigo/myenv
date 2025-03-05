@@ -17,8 +17,8 @@ export type Result<T> = {
 }
 
 export const getPaths = (projectId: string) => {
-    const basePath = process.env.NODE_ENV === 'production' ? '/tmp/myenv' : './tmp'
-    const traefikBasePath = process.env.NODE_ENV === 'production' ? '/etc/traefik' : './traefik'
+    const basePath = process.env.NODE_ENV === 'production' ? '/tmp/myenv' : './server/tmp'
+    const traefikBasePath = process.env.NODE_ENV === 'production' ? '/etc/traefik' : './server/traefik'
 
     const PROJECT_PATH = join(basePath, 'projects', projectId)
     const PROJECT_ENV = join(basePath, 'projects-env', projectId, '.env')

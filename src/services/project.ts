@@ -19,11 +19,28 @@ export const importRepositoryToProject = async (input: {
     projectId: string
 }) => {
 
-    const result = await prisma.project.update({
+    return await prisma.project.update({
         where: { id: input.projectId },
         data: {
             repositoryUrl: input.repositoryUrl,
             repositoryToken: input.repositoryToken
         }
     })
+}
+
+export const saveEnvironmentFile = async (input: {
+    projectId: string,
+    payload: string
+}) => {
+    const { PROJECT_ENV } = getPaths(input.projectId)
+    await Bun.file(PROJECT_ENV).write(input.payload)
+}
+
+export const getEnvironmentContent = async (projectId: string) => {
+    const { PROJECT_ENV } = getPaths(projectId)
+    const file = Bun.file(PROJECT_ENV)
+    if(!file.exists()){
+        return null
+    }
+    return file.text()
 }
