@@ -32,6 +32,7 @@ services:
     build: .
     ports:
       - "7070:7070"
+    privileged: true
     volumes:
       - "./server/traefik/dynamic:/etc/traefik/dynamic"
       - "./server/tmp:/tmp/myenv"
@@ -39,7 +40,7 @@ services:
       - "/var/run/docker.sock:/var/run/docker.sock"
     networks:
       - traefik_proxy
-
+    user: "root"
 networks:
   traefik_proxy:
     external: true

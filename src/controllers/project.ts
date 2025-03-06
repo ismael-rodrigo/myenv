@@ -8,7 +8,7 @@ import { getEnvironmentContent, saveEnvironmentFile } from "../services/project"
 export const registerProjectControllers = (fastify: FastifyInstance) => {
     fastify.get('/api/projects/list', async () => {
         return prisma.project.findMany({
-            select: { id: true, name: true }
+            select: { id: true, name: true, repositoryUrl: true }
         })
     })
 
@@ -67,23 +67,31 @@ export const registerProjectControllers = (fastify: FastifyInstance) => {
         return getBranches({ repositoryUrl: project.repositoryUrl, repositoryToken: project.repositoryToken || undefined })
     })
 
-    fastify.post('/api/projects/:id/deploy-branch', async (request) => {
+    fastify.get('/api/projects/:id/deploy-branch', async (request, reply) => {
+        reply.raw.setHeader('Content-Type', 'text/event-stream')
+        reply.raw.setHeader('Cache-Control', 'no-cache')
+        reply.raw.setHeader('Connection', 'keep-alive')
+
         const { id } = request.params as { id: string }
-        const { branch, type } = request.body as { branch: string, type: 'docker-compose' }
+        const { branch } = request.query as { branch: string }
+
         const project = await prisma.project.findUnique({
             where: { id }
         })
-        if(!project || !project.repositoryUrl || !branch || !type){
+        if(!project || !project.repositoryUrl || !branch){
             return { error: 'Bad request' }
         }
 
-        await checkoutBranch({ branch, projectId: project.id })
-        if(type === 'docker-compose'){
-            await deployFromDockerCompose({ projectId: project.id, environmentKey: branch })
-        } else {
-            return { error: 'Bad request' }
-        }
-        return { success: true }
+        const checkout = await checkoutBranch({ branch, projectId: project.id })
+
+        reply.raw.write(`data: Checking out branch ${branch}\n\n`)
+        reply.raw.write(`data: ${checkout.stdout || checkout.stderr}\n\n`)
+
+        await deployFromDockerCompose({ projectId: project.id, environmentKey: branch }, (data) => {
+            reply.raw.write(`data: ${data}\n\n`)
+        })
+        reply.raw.write(`data: finished\n\n`)
+        reply.raw.end()
     })
     
     fastify.get('/api/container-logs/:containerId', async (request, reply) => {

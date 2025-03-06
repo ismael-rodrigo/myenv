@@ -4,10 +4,10 @@ import { join, dirname,  } from 'path';
 export const execAsync = (command: string) => promisify(exec)
     (command)
         .then(({ stdout, stderr }) => {
-            return { stdout, stderr: stderr ? new Error(stderr) : null }
+            return { stdout, stderr }
         })
         .catch((error) => {
-            return { stderr: error as Error, stdout: '' }
+            return { stderr: error, stdout: '' }
         })
 
 

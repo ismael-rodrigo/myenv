@@ -38,7 +38,7 @@ COPY --from=prerelease /usr/src/app/prisma ./prisma
 COPY --from=prerelease /usr/src/app/src ./src
 COPY --from=prerelease /usr/src/app/package.json /usr/src/app/entrypoint.sh /usr/src/app/vite.config.js ./
 RUN bun run build
-
+RUN chmod 777 -R /tmp/myenv
 ENV DOCKER_HOST=unix:///var/run/docker.sock
 
 EXPOSE 7070

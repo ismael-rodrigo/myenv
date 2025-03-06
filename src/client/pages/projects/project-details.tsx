@@ -1,6 +1,6 @@
 import { useForm } from "@tanstack/react-form"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useNavigate, useParams } from "react-router"
 
 type Project = {
@@ -124,7 +124,7 @@ const EnvFileCard = ({ data }: {data: ProjectDetailsQuery | undefined}) => {
                     }</button>
                 </div>
                 <div className="mt-3">
-                    <textarea value={content} onChange={e => setContent(e.target.value)} className="text-nowrap textarea text-base overflow-x-auto bg-base-200 p-4 rounded-md w-full h-[200px]" disabled={!isEditing} defaultValue={envFile?.payload} />
+                    <textarea value={content} onChange={e => setContent(e.target.value)} className="text-nowrap textarea text-base overflow-x-auto disabled:bg-base-100 disabled:opacity-80 bg-base-100 p-4 rounded-md w-full h-[200px]" disabled={!isEditing} defaultValue={envFile?.payload} />
                     <div className="mt-5 w-2/3">
                         <h3 className="card-title text-base">Dynamic Variables</h3>
                         <div className="divider h-1"></div>
@@ -203,26 +203,42 @@ const RepositoryCard = ({ data }: {data: ProjectDetailsQuery | undefined}) => {
 
 const EnviromentsCard = ({ data }: {data: ProjectDetailsQuery | undefined}) => {
     const queryClient = useQueryClient()
+    const [sse, setSse] = useState<EventSource | null>(null)
+    const [logs, setLogs] = useState<string[]>([])
+    const [loading, setLoading] = useState(false)
+
     const form = useForm({
         defaultValues: {
             branch: '',
             type: 'docker-compose'
         },
         onSubmit: async ({value}) => {
-            await fetch(`/api/projects/${data?.project.id}/deploy-branch`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(value)
-            })
-            .then(() => {
-                queryClient.invalidateQueries({
-                    queryKey: ['projects', data?.project.id!]
-                })
-            })
+            if(sse){
+                sse.close()
+            }
+            setLogs([])
+            setLoading(false)
+            const searchParams = new URLSearchParams()
+            searchParams.set('branch', value.branch)
+            const _sse = new EventSource(`/api/projects/${data?.project.id}/deploy-branch?` + searchParams.toString())
+            _sse.onmessage = (event) => {
+                if(event.data === 'finished'){
+                    setLoading(true)
+                    _sse.close()
+                    return;
+                }
+                setLogs((logs) => [...logs, event.data])
+            }
+            setSse(_sse)
         }
     })
+
+    useEffect(() => {
+        return () => {
+            sse?.close()
+        }
+    }, [])
+
     const navigate = useNavigate()
     return (
         <ul className="list bg-base-200 rounded-box shadow-md border border-base-200">
@@ -253,10 +269,17 @@ const EnviromentsCard = ({ data }: {data: ProjectDetailsQuery | undefined}) => {
                                             <input id={field.name} name={field.name} value={field.state.value} onBlur={field.handleBlur} onChange={(e) => field.handleChange(e.target.value)} className="input input-bordered" />
                                         </div>
                                     )} />
-                                    
+                                    <div className="mockup-code max-w-full mt-5 max-h-[400px] overflow-auto" id="logs-container">
+                                        {logs.map((log, index) => (
+                                            <pre key={index} data-prefix={'>'}
+                                            >
+                                                <code>{log}</code>
+                                            </pre>
+                                        ))}
+                                    </div>
                                     <div className="mt-5 flex justify-end">
-                                        <button type="submit" className="btn btn-primary" disabled={form.state.isSubmitting}>
-                                            <span className="loading loading-spinner" hidden={!form.state.isSubmitting}></span>
+                                        <button type="submit" className="btn btn-primary" disabled={loading}>
+                                            <span className="loading loading-spinner" hidden={!loading}></span>
                                             Deploy
                                         </button>
                                     </div>

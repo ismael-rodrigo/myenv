@@ -8,7 +8,8 @@ const DOCKER_COMPOSE_FILES = ['docker-compose.yml', 'docker-compose.yaml']
 export const deployFromDockerCompose = async (input: {
     projectId: string;
     environmentKey: string;
-}) => {
+},cb: (log:string) => void) => {
+
     const { PROJECT_PATH, TRAEFIK_DYNAMIC_PATH, PROJECT_ENV } = getPaths(input.projectId)
     const composeFile = DOCKER_COMPOSE_FILES.find(file => Bun.file(`${PROJECT_PATH}/${file}`).exists())
     if(!composeFile){
@@ -27,16 +28,19 @@ export const deployFromDockerCompose = async (input: {
     } as any
     
     for (const containerName in compose.services) {
-
+        const containerPort = compose.services[containerName].labels?.find((label: string) => label.startsWith("myenv.port="))?.split("=")[1]
+        if(!containerPort) {
+            delete compose.services[containerName]
+            continue
+        }
+        
         const service = `${input.environmentKey}-${containerName}`
         const traefikHost = `${service}.localhost`
         compose.services[service] = compose.services[containerName]
         delete compose.services[containerName]
 
-        const containerPort = compose.services[service].labels.find((label: string) => label.startsWith("port="))?.split("=")[1]
+        delete compose.services[service].ports
 
-        if(!containerPort) continue
-        compose.services[service].env_file = [ PROJECT_ENV, ...(compose.services[service].env_file || []) ]
         compose.services[service].networks = ["traefik_proxy"]
 
         compose.networks = {
@@ -58,17 +62,24 @@ export const deployFromDockerCompose = async (input: {
                 passHostHeader: true
             }
         }
+        cb(`Configured traefik and compose file to container ${containerName} ✅` )
     }
 
     const newCompose = yaml.dump(compose, { noRefs: true });
-
     const traefikYaml = yaml.dump(traefik, { noRefs: true });
-
     await Bun.file(composePath).write(newCompose)
     await Bun.file(join(TRAEFIK_DYNAMIC_PATH,`${input.projectId}-${input.environmentKey}.yml`)).write(traefikYaml)
-
-    Bun.spawn(['docker', 'compose', '-p', input.projectId, 'up', '-d', '--force-recreate', '--build' ], {
+    const envFile = await getEnvironmentContent(input.projectId)
+    envFile && await Bun.file(join(PROJECT_PATH, '.env')).write(envFile)
+    envFile && cb(`Updated .env file with environment variables ✅`)
+    
+    cb(`Deployed ${input.environmentKey} environment ✅`)
+    const proccess = Bun.spawn(['docker', 'compose', '-p', input.projectId, 'up', '-d', '--force-recreate', '--build' ], {
         cwd: PROJECT_PATH
+    })
+
+    await readStream(proccess.stdout, (data) => {
+        cb(data)
     })
 }
 

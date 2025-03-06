@@ -34,10 +34,7 @@ export const checkoutBranch = async ({ branch, projectId }: { branch: string, pr
         git ${envGit} fetch origin ${branch} &&
         git ${envGit} reset --hard origin/${branch}
     `
-
     const result = await execAsync(execCommand)
-
-    // Add logs
 
     return result
 }
