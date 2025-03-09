@@ -10,9 +10,9 @@ declare global {
 const fastify = Fastify({
   logger: true
 })
-const isDev = process.env.NODE_ENV === 'production'
-const port = isDev ? 3535 : 3000
-export const currentPublicIpv4 = isDev ? await getPublicIp() : 'localhost'
+const isProd = process.env.NODE_ENV === 'production'
+const port = isProd ? 3535 : 3000
+export const currentPublicIpv4 = isProd ? await getPublicIp() : 'localhost'
 
 globalThis.currentPublicIpv4 = currentPublicIpv4
 
