@@ -31,7 +31,7 @@ services:
       - prod.env
     build: .
     ports:
-      - "7070:7070"
+      - "3535:3535"
     privileged: true
     volumes:
       - "./server/traefik/dynamic:/etc/traefik/dynamic"

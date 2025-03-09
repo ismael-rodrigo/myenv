@@ -34,7 +34,6 @@ export const getPaths = (projectId: string) => {
 }
 
 export async function readStream(stream: ReadableStream<Uint8Array<ArrayBufferLike>>, onChunk: (chunk: string) => void) {
-    console.log('reading stream')
     const reader = stream.getReader();
     const decoder = new TextDecoder();
     try {
@@ -46,4 +45,8 @@ export async function readStream(stream: ReadableStream<Uint8Array<ArrayBufferLi
     } catch (e) {
         onChunk(String(e));
     }
+}
+
+export async function mountServiceHost(serviceName: string){
+
 }

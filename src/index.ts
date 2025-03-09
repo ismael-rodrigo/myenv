@@ -2,12 +2,19 @@ import Fastify from 'fastify'
 import { registerProjectControllers } from './controllers/project'
 import FastifyVite from '@fastify/vite'
 import { resolve } from 'node:path'
+import { getPublicIp } from './services/server'
 
+declare global {
+  var currentPublicIpv4: string
+}
 const fastify = Fastify({
   logger: true
 })
+const isDev = process.env.NODE_ENV === 'production'
+const port = isDev ? 3535 : 3000
+export const currentPublicIpv4 = isDev ? await getPublicIp() : 'localhost'
 
-const port = process.env.NODE_ENV === 'production' ? 7070 : 3000
+globalThis.currentPublicIpv4 = currentPublicIpv4
 
 await fastify.register(FastifyVite, {
   root: resolve(import.meta.dirname, '../'),
@@ -27,7 +34,7 @@ registerProjectControllers(fastify)
 await fastify.vite.ready()
 try {
   await fastify.listen({ port, host: '0.0.0.0'  })
-  console.log(`server listening on 7070 🚀`)
+  console.log(`server listening on ${port} 🚀`)
 } catch (err) {
   fastify.log.error(err)
   process.exit(1)

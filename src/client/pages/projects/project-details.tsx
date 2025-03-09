@@ -1,5 +1,5 @@
 import { useForm } from "@tanstack/react-form"
-import { useQuery, useQueryClient } from "@tanstack/react-query"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useEffect, useState } from "react"
 import { useNavigate, useParams } from "react-router"
 
@@ -9,16 +9,19 @@ type Project = {
     repositoryUrl?: string
     repositoryToken?: string
 }
+
 export type ProjectContainers = {
     [key: string]: {
         id: string
         name: string
         status: string
-        state: string	
+        state: string
+        externalHost: string
     }[]
 } & {
     environments: string[]
 }
+
 export type ProjectDetailsQuery = {
     project: Project
     containers: ProjectContainers
@@ -33,13 +36,29 @@ export const projectQuery = (id: string, enabled: boolean) => useQuery({
     }
 })
 
+export const deleteProjectMutation = (projectId: string) => {
+    const queryClient = useQueryClient()
+    return useMutation({
+        mutationFn: async () => {
+            await fetch(`/api/projects/${projectId}`, {
+                method: 'DELETE'
+            })
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({
+                queryKey: ['projects']
+            })
+        }
+    })
+}
+
+
 export const ProjectDetailsPage = () => {
     const projectId = useParams<{id: string}>().id
     const isCreating = projectId === 'create'
     const { data, isPending } = projectQuery(projectId!, !isCreating)
+    const { mutateAsync, isPending:deletingProject } = deleteProjectMutation(projectId!)
     const navigate = useNavigate()
-
-
 
     return (
         <div>
@@ -52,7 +71,12 @@ export const ProjectDetailsPage = () => {
                         {isCreating ? 'Criar projeto' : data?.project?.name}
                     </h1>
                 </div>
-               
+                <button className="btn h-8 btn-xs btn-error flex items-center gap-1" disabled={deletingProject} onClick={()=>mutateAsync().then(()=>{
+                    navigate('/projects')
+                })}>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" className="lucide lucide-trash-2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
+                    Delete
+                </button>
             </div>
             <div className="mt-5 gap-2 flex flex-col">
                 {
@@ -144,9 +168,6 @@ const EnvFileCard = ({ data }: {data: ProjectDetailsQuery | undefined}) => {
     )
 }
 
-
-
-
 const RepositoryCard = ({ data }: {data: ProjectDetailsQuery | undefined}) => {
     const form = useForm({
         defaultValues: {
@@ -217,14 +238,18 @@ const EnviromentsCard = ({ data }: {data: ProjectDetailsQuery | undefined}) => {
                 sse.close()
             }
             setLogs([])
-            setLoading(false)
+            setLoading(true)
             const searchParams = new URLSearchParams()
             searchParams.set('branch', value.branch)
+            console.log(value)
             const _sse = new EventSource(`/api/projects/${data?.project.id}/deploy-branch?` + searchParams.toString())
             _sse.onmessage = (event) => {
                 if(event.data === 'finished'){
-                    setLoading(true)
+                    setLoading(false)
                     _sse.close()
+                    queryClient.invalidateQueries({
+                        queryKey: ['projects', data?.project.id]
+                    })
                     return;
                 }
                 setLogs((logs) => [...logs, event.data])
@@ -247,7 +272,7 @@ const EnviromentsCard = ({ data }: {data: ProjectDetailsQuery | undefined}) => {
                     Setup
                 </h2>
                 <div>
-                    <button className="btn btn-neutral" onClick={()=> (document.getElementById('my_modal_2') as HTMLDialogElement).showModal()}>
+                    <button className="btn btn-primary" onClick={()=> (document.getElementById('my_modal_2') as HTMLDialogElement).showModal()}>
                         Up enviroment
                     </button>
                     <dialog  id="my_modal_2" className="modal">

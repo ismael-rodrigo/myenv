@@ -100,7 +100,7 @@ const ContainerCard = ({container, envId}: {
                     </div>
                     <div>
                         <div className="text-xs font-semibold opacity-60">Link</div>
-                        <a className="link link-info flex gap-1 items-end" target="_blank" rel="noopener noreferrer" href={`http://${envId}-${container.name}.localhost`}>http://{envId}-{container.name}.localhost
+                        <a className="link link-info flex gap-1 items-end" target="_blank" rel="noopener noreferrer" href={`${container.externalHost}`}>{container.externalHost}
                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mb-[1px] size-[1.2em] lucide lucide-square-arrow-out-up-right"><path d="M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6"/><path d="m21 3-9 9"/><path d="M15 3h6v6"/></svg>
                         </a>
                     </div>

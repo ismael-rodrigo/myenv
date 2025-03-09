@@ -15,14 +15,8 @@ export const cloneRepository = async (input: {
         : input.repositoryUrl
 
     const { PROJECT_PATH } = getPaths(input.projectId)
-    console.log(PROJECT_PATH)
-    const r = await execAsync(`git config --global --add safe.directory ${PROJECT_PATH}`)
-    console.log(r)
-    const result = await execAsync(`git clone ${repositoryUrl} ${PROJECT_PATH}`)
-
-    console.log(result)
-
-    return result
+    await execAsync(`git config --global --add safe.directory ${PROJECT_PATH}`)
+    await execAsync(`git clone ${repositoryUrl} ${PROJECT_PATH}`)
 }
 
 export const checkoutBranch = async ({ branch, projectId }: { branch: string, projectId: string }) => {
@@ -34,7 +28,5 @@ export const checkoutBranch = async ({ branch, projectId }: { branch: string, pr
         git ${envGit} fetch origin ${branch} &&
         git ${envGit} reset --hard origin/${branch}
     `
-    const result = await execAsync(execCommand)
-
-    return result
+    await execAsync(execCommand)
 }

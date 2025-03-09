@@ -1,14 +1,14 @@
 import { execAsync, getPaths, readStream } from "../utils/utils";
 import * as yaml from 'js-yaml'
 import { join } from 'path';
-import { getEnvironmentContent } from "./project";
+import { getEnvironmentContent, getPublicIp, mountTraefikPublicHost } from "./server";
 
 const DOCKER_COMPOSE_FILES = ['docker-compose.yml', 'docker-compose.yaml']
 
 export const deployFromDockerCompose = async (input: {
     projectId: string;
     environmentKey: string;
-},cb: (log:string) => void) => {
+},logger: (log:string) => void) => {
 
     const { PROJECT_PATH, TRAEFIK_DYNAMIC_PATH, PROJECT_ENV } = getPaths(input.projectId)
     const composeFile = DOCKER_COMPOSE_FILES.find(file => Bun.file(`${PROJECT_PATH}/${file}`).exists())
@@ -26,19 +26,19 @@ export const deployFromDockerCompose = async (input: {
             services: {}
         }
     } as any
-    
+    const publicIpv4 = await getPublicIp()
+
     for (const containerName in compose.services) {
         const containerPort = compose.services[containerName].labels?.find((label: string) => label.startsWith("myenv.port="))?.split("=")[1]
         if(!containerPort) {
             delete compose.services[containerName]
             continue
         }
-        
         const service = `${input.environmentKey}-${containerName}`
-        const traefikHost = `${service}.localhost`
+        const traefikHost = await mountTraefikPublicHost({ publicIpv4, serviceName: service })
         compose.services[service] = compose.services[containerName]
-        delete compose.services[containerName]
 
+        delete compose.services[containerName]
         delete compose.services[service].ports
 
         compose.services[service].networks = ["traefik_proxy"]
@@ -48,7 +48,7 @@ export const deployFromDockerCompose = async (input: {
                 external: true
             }
         }
-        
+
         traefik.http.routers[service+"-router"] = {
             rule: `Host(\`${traefikHost}\`)`,
             service: service+"-service",
@@ -58,28 +58,32 @@ export const deployFromDockerCompose = async (input: {
 
         traefik.http.services[service+"-service"] = {
             loadBalancer: {
-                servers: [ { url: `http://${input.projectId}-${service}-1:${containerPort}` } ],
+                servers: [ { url: `http://${input.projectId}-${service}-1` } ],
                 passHostHeader: true
             }
         }
-        cb(`Configured traefik and compose file to container ${containerName} ✅` )
+
+        logger(`Configured traefik and compose file to container ${containerName} ✅` )
     }
 
     const newCompose = yaml.dump(compose, { noRefs: true });
     const traefikYaml = yaml.dump(traefik, { noRefs: true });
+
     await Bun.file(composePath).write(newCompose)
     await Bun.file(join(TRAEFIK_DYNAMIC_PATH,`${input.projectId}-${input.environmentKey}.yml`)).write(traefikYaml)
+
     const envFile = await getEnvironmentContent(input.projectId)
     envFile && await Bun.file(join(PROJECT_PATH, '.env')).write(envFile)
-    envFile && cb(`Updated .env file with environment variables ✅`)
+    envFile && logger(`Updated .env file with environment variables ✅`)
     
-    cb(`Deployed ${input.environmentKey} environment ✅`)
+    logger(`Deployed ${input.environmentKey} environment ✅`)
+
     const proccess = Bun.spawn(['docker', 'compose', '-p', input.projectId, 'up', '-d', '--force-recreate', '--build' ], {
         cwd: PROJECT_PATH
     })
 
     await readStream(proccess.stdout, (data) => {
-        cb(data)
+        logger(data)
     })
 }
 
@@ -92,15 +96,20 @@ type ContainerLs = {
 export const getContainersRunning = async (projectId: string) => {
     const result = await execAsync(`docker ps --filter "name=${projectId}" --format "{{json .}}" --all`)
     const containersFiltered = result.stdout.split('\n').filter(Boolean).map((container: string) => JSON.parse(container)) as ContainerLs[]
-    const containers = containersFiltered.reduce((acc: any, container) => {
+    const containers = containersFiltered.reduce(async (acc: any, container) => {
         const { ID: id, Names: name, State: state, Status: status } = container
-        const [_, environmentKey, ...containerName] = name.split('-').slice(0, -1)
+        const [_, environmentKey, ...containerFullName] = name.split('-').slice(0, -1)
+
+        const containerName = containerFullName.join('-')
+        const serviceName = `${environmentKey}-${containerName}`
+        const externalHost = await mountTraefikPublicHost({ serviceName })
+
         if(!acc[environmentKey]){
             acc[environmentKey] = []
             acc.environments = acc.environments || []
             acc.environments.push(environmentKey)
         }
-        acc[environmentKey].push({ id, name: containerName.join('-'), status, state })
+        acc[environmentKey].push({ id, name: containerName, status, state, externalHost })
         return acc
     }, {})
     return containers
@@ -134,4 +143,11 @@ export const onContainerLogs = async (containerId: string, cb: (logs: object) =>
         cb({logs})
     })
     return {process, stream}
+}
+
+export const removeContainers = async (filter: Record<'name', string> | Record<'id', string>) => {
+    const filterAsString = Object.entries(filter).map(([key, value]) => `--filter "${key}=${value}"`)[0] 
+    const command = `docker rm -vf $(docker ps -a -q ${filterAsString})`
+    const result = await execAsync(command)
+    return result
 }

@@ -2,8 +2,8 @@ import type { FastifyInstance } from "fastify";
 import { prisma } from "../lib/prisma";
 import { getBranches } from "../services/github";
 import { checkoutBranch, cloneRepository } from "../services/git";
-import { deployFromDockerCompose, getContainersRunning, onContainerLogs, restartContainers, stopContainers, upContainers } from "../services/docker";
-import { getEnvironmentContent, saveEnvironmentFile } from "../services/project";
+import { deployFromDockerCompose, getContainersRunning, onContainerLogs, removeContainers, restartContainers, stopContainers, upContainers } from "../services/docker";
+import { getEnvironmentContent, removeProjectDependencies, saveEnvironmentFile } from "../services/server";
 
 export const registerProjectControllers = (fastify: FastifyInstance) => {
     fastify.get('/api/projects/list', async () => {
@@ -31,13 +31,6 @@ export const registerProjectControllers = (fastify: FastifyInstance) => {
         }
         const containers = await getContainersRunning(project.id)
         return { project, containers }
-    })
-
-    fastify.delete('/api/projects/:id', async (request) => {
-        const { id } = request.params as { id: string }
-        return prisma.project.delete({
-            where: { id }
-        })
     })
 
     fastify.post('/api/projects/:id/add-repository', async (request) => {
@@ -82,14 +75,14 @@ export const registerProjectControllers = (fastify: FastifyInstance) => {
             return { error: 'Bad request' }
         }
 
-        const checkout = await checkoutBranch({ branch, projectId: project.id })
+        await checkoutBranch({ branch, projectId: project.id })
 
         reply.raw.write(`data: Checking out branch ${branch}\n\n`)
-        reply.raw.write(`data: ${checkout.stdout || checkout.stderr}\n\n`)
 
         await deployFromDockerCompose({ projectId: project.id, environmentKey: branch }, (data) => {
             reply.raw.write(`data: ${data}\n\n`)
         })
+        
         reply.raw.write(`data: finished\n\n`)
         reply.raw.end()
     })
@@ -140,5 +133,22 @@ export const registerProjectControllers = (fastify: FastifyInstance) => {
         const { id } = request.params as { id: string }
         const payload = await getEnvironmentContent(id)
         return { payload }
+    })
+
+    fastify.delete('/api/container/:containerId', async (request) => {
+        const { containerId } = request.params as { containerId: string }
+        await removeContainers({
+            id: containerId
+        })
+        return { success: true }
+    })
+
+    fastify.delete('/api/projects/:id', async (request) => {
+        const { id } = request.params as { id: string }
+        await prisma.project.delete({
+            where: { id }
+        })
+        await removeProjectDependencies(id)
+        return { success: true }
     })
 }
