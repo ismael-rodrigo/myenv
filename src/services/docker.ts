@@ -58,7 +58,7 @@ export const deployFromDockerCompose = async (input: {
 
         traefik.http.services[service+"-service"] = {
             loadBalancer: {
-                servers: [ { url: `http://${input.projectId}-${service}-1` } ],
+                servers: [ { url: `http://${input.projectId}-${service}-1:${containerPort}` } ],
                 passHostHeader: true
             }
         }
@@ -109,7 +109,7 @@ export const getContainersRunning = async (projectId: string) => {
             acc.environments = acc.environments || []
             acc.environments.push(environmentKey)
         }
-        acc[environmentKey].push({ id, name: containerName, status, state, externalHost })
+        acc[environmentKey].push({ id, name: containerName, status, state, externalHost: `http://${externalHost}` })
         return acc
     }, {})
     return containers

@@ -64,7 +64,7 @@ export const mountTraefikPublicHost = async (input: {
 }) => {
     input.publicIpv4 = input.publicIpv4 || globalThis.currentPublicIpv4
     const { publicIpv4, serviceName } = input
-    const traefikHost = `http://${serviceName}.${publicIpv4}.traefik.me`
+    const traefikHost = `${serviceName}.${publicIpv4}.traefik.me`
     return traefikHost
 }
 
