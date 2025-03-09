@@ -1,18 +1,13 @@
-# myenv
+## Management of Staging Environments with Docker and Traefik
+This project enables the deployment and management of isolated staging environments using Docker and Traefik, all automated through a web interface.
 
-To install dependencies:
+## Key Features:
+- On-demand creation and removal of environments using Docker containers.
+- Automatic exposure of environments via dynamically configured subdomains with Traefik.
+- Intuitive web interface for easy management.
+- Full isolation between environments, ensuring organized and conflict-free testing.
 
-```bash
-bun install
-```
-
-To run:
-
-```bash
-bun run index.ts
-```
-
-This project was created using `bun init` in bun v1.2.1. [Bun](https://bun.sh) is a fast all-in-one JavaScript runtime.
+This solution allows for fast, structured, and hassle-free application testing, streamlining the staging process. 🚀
 
 ```bash
 curl -sL https://raw.githubusercontent.com/ismael-rodrigo/myenv/master/install.sh | sh
